@@ -1,0 +1,4 @@
+PyPDF2>=3.0.0
+# Optional for faster tabular processing and parquet output
+pandas>=2.1.0
+pyarrow>=14.0.0
