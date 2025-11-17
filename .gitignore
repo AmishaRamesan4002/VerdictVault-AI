@@ -209,3 +209,5 @@ data.zip
 data/
 parsed_by_year/
 parsed_all.ndjson
+
+uv.lock

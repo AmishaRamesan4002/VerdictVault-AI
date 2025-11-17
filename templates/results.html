@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Results</title>
+    <style>
+        body { font-family: Arial; margin: 40px; background: #f8f8f8; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 10px; }
+        .doc-card { background: #fafafa; padding: 15px; border-left: 4px solid #007BFF; margin-bottom: 12px; border-radius: 5px; }
+        .btn-back { text-decoration: none; padding: 8px 14px; background: #007BFF; color: white; border-radius: 6px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <a class="btn-back" href="/">← Back</a>
+
+    <h2>Results for Query: "{{ query }}"</h2>
+
+    {% if mode == "docs" %}
+        <h3>Retrieved Documents:</h3>
+        {% for doc in documents %}
+            <div class="doc-card">
+                {{ doc.content }}
+            </div>
+        {% endfor %}
+
+    {% elif mode == "rag" %}
+        <h3>Generated Answer:</h3>
+        <p>{{ answer }}</p>
+    {% endif %}
+
+</div>
+
+</body>
+</html>
