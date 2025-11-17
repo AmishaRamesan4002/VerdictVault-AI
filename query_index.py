@@ -36,12 +36,17 @@ def search_judgments(query_text=None, year=None, bench=None):
     response = es.search(index=INDEX_NAME, body=body)
 
     print(f"\n Search results for query: '{query_text or ''}', Year: '{year or ''}', Bench: '{bench or ''}'")
+    results=[]
     for hit in response["hits"]["hits"]:
+        #get the text content from hit
         src = hit["_source"]
+        content=src.get("text", "")
         print(f"Score: {hit['_score']:.2f} | Year: {src.get('year')} | Filename: {src.get('filename')}")
         if src.get("bench"):
             print(f"   Bench: {src.get('bench')}")
         print()
+        results.append({"content": content,"score": hit['_score'],"year": src.get('year'), "filename": src.get('filename'), "bench": src.get('bench')})
+    return results
 
 # Examples of usage
 if __name__ == "__main__":
