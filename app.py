@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-from rag_layer import retrieve_documents, generate_answer   # ✅ Import your functions
+from rag_layer import retrieve_documents, generate_answer
 
 app = Flask(__name__)
 
@@ -11,27 +11,31 @@ def home():
 @app.route("/search", methods=["POST"])
 def search():
     query = request.form.get("query")
-    mode = request.form.get("mode")  # "docs" or "rag"
+    mode = request.form.get("mode")
+    year = request.form.get("year") or None
+    bench = request.form.get("bench") or None
 
-    retrieved_docs = retrieve_documents(query)
+    # Retrieve docs based on query (you may also use year/bench later)
+    retrieved_docs = retrieve_documents(query,year, bench)
 
-    # Case 1: Return list of retrieved documents
     if mode == "docs":
         return render_template("results.html",
                                mode="docs",
                                query=query,
+                               year=year,
+                               bench=bench,
                                documents=retrieved_docs)
 
-    # Case 2: Generate short answer using RAG
     elif mode == "rag":
         answer = generate_answer(query, retrieved_docs)
         return render_template("results.html",
                                mode="rag",
                                query=query,
+                               year=year,
+                               bench=bench,
                                answer=answer)
 
-    else:
-        return "Invalid selection"
+    return "Invalid selection"
 
 
 if __name__ == "__main__":
