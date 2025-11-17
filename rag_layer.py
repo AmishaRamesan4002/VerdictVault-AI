@@ -1,7 +1,7 @@
 from google import genai
 from dotenv import load_dotenv
 import os
-
+from query_index import search_judgments
 # --- Configuration and Client Setup ---
 load_dotenv()
 
@@ -20,14 +20,15 @@ except Exception as e:
     # Exit or handle error if the client can't be created
 
 # Your retrieval function (written by teammate)
-def retrieve_documents(query):
-    print(f"Retrieving documents for query: '{query}'")
-    return [
-        {"content": f"The main cause of World War I was a complex system of alliances, militarism, and imperialism."},
-        {"content": f"Sample document 2: The assassination of Archduke Franz Ferdinand of Austria was the immediate trigger for the war."},
-        {"content": f"Sample document 3: The war lasted from 1914 to 1918."},
-        {"content": f"Irrelevant document 4: The capital of France is Paris."},
-    ]
+def retrieve_documents(query, year=None, bench=None):
+    return search_judgments(query_text=query, year=None, bench=None)
+    # print(f"Retrieving documents for query: '{query}'")
+    # return [
+    #     {"content": f"The main cause of World War I was a complex system of alliances, militarism, and imperialism."},
+    #     {"content": f"Sample document 2: The assassination of Archduke Franz Ferdinand of Austria was the immediate trigger for the war."},
+    #     {"content": f"Sample document 3: The war lasted from 1914 to 1918."},
+    #     {"content": f"Irrelevant document 4: The capital of France is Paris."},
+    # ]
 
 # documents are the restrieved one
 def generate_answer(query, documents, max_docs=3):
