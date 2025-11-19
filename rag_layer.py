@@ -53,13 +53,12 @@ Documents:
 ---
 {context}
 ---
-
-If the answer cannot be found in the provided documents, you MUST respond with:
-"Not enough information in the provided documents."
 """
+#     If the answer cannot be found in the provided documents, you MUST respond with:
+# "Not enough information in the provided documents."
     
     print("\n--- Generating Answer with Gemini ---")
-    
+    print(f"Prompt:\n{prompt}\n")
     # 3. Call the Gemini API
     # Using client.models.generate_content (the standard method)
     response = client.models.generate_content(

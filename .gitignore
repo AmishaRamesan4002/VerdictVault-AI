@@ -211,3 +211,4 @@ parsed_by_year/
 parsed_all.ndjson
 
 uv.lock
+legal_embeddings_dump.pkl
