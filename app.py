@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
 from rag_layer import retrieve_documents, generate_answer   # ✅ Import your functions
+import markdown
 
 app = Flask(__name__)
 
@@ -25,6 +26,8 @@ def search():
 
     # Retrieve docs AND suggestion
     retrieved_docs, suggestion = retrieve_documents(query, year, bench)
+    # print(retrieved_docs)
+    # print(suggestion)
 
     # retrieved_docs = retrieve_documents(query)
 
@@ -43,12 +46,13 @@ def search():
 
     # Case 2: Generate short answer using RAG
     elif mode == "rag":
-        answer = generate_answer(query, retrieved_docs)
+        raw_answer = generate_answer(query, retrieved_docs)
+        answer_html = markdown.markdown(raw_answer)
         return render_template("results.html",
                                mode="rag",
                                query=query,
                                bench=bench,
-                               answer=answer,
+                               answer=answer_html,
                                suggestion=suggestion)
 
     else:

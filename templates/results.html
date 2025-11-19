@@ -49,9 +49,28 @@
             border-left: 5px solid #007BFF;
             transition: transform 0.2s;
         }
-        .doc-box:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .doc-box:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05); 
+        }
         
-        .doc-title { font-size: 1.1em; font-weight: 600; color: #2c3e50; margin-bottom: 8px; }
+        .doc-title { 
+            font-size: 1.1em; 
+            font-weight: 600; 
+            color: #2c3e50; 
+            margin-bottom: 8px;
+            
+            /* Force text to wrap inside the box */
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+        
+        /* Link Styling */
+        .doc-link { color: #007BFF; text-decoration: none; }
+        .doc-link:hover { text-decoration: underline; }
+
         .doc-meta { font-size: 0.85em; color: #6c757d; margin-bottom: 12px; }
         .meta-tag { 
             background: #eef4fc; color: #0056b3; 
@@ -61,15 +80,16 @@
 
         .doc-content { font-size: 0.95em; line-height: 1.6; color: #555; }
 
-        /* --- AI ANSWER FORMATTING FIX --- */
+        /* AI Answer Styling */
         .ai-content {
             font-size: 1em;
             line-height: 1.7;
             color: #2c3e50;
-            white-space: pre-wrap; /* <--- THIS IS THE MAGIC LINE */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        /* -------------------------------- */
+        .ai-content ul { padding-left: 20px; margin-bottom: 15px; }
+        .ai-content li { margin-bottom: 8px; }
+        .ai-content strong { color: #0056b3; }
 
         .back-btn {
             display: inline-block; margin-top: 30px; padding: 10px 25px;
@@ -107,7 +127,16 @@
         {% if documents %}
             {% for d in documents %}
                 <div class="doc-box">
-                    <div class="doc-title">📄 {{ d.filename }}</div>
+                    <div class="doc-title">
+                        {% set clean_name = d.filename.replace('_', ' ').replace('1.PDF', '').replace('1.pdf', '') %}
+
+                        {% if d.link %}
+                            📄 <a href="{{ d.link }}" target="_blank" class="doc-link">{{ clean_name }}</a>
+                            <span style="font-size: 0.7em; color: #28a745; margin-left: 5px;">(View PDF ↗)</span>
+                        {% else %}
+                            📄 {{ clean_name }}
+                        {% endif %}
+                    </div>
                     
                     <div class="doc-meta">
                         {% if d.year %} <span class="meta-tag">📅 {{ d.year }}</span> {% endif %}
@@ -128,7 +157,7 @@
     {% if mode == "rag" %}
         <div class="doc-box" style="border-left-color: #28a745; background-color: #f9fff9;">
             <h3 style="margin-top:0; color:#28a745; border-bottom: 1px solid #d4edda; padding-bottom: 10px;">AI Legal Analysis</h3>
-            <div class="ai-content">{{ answer }}</div>
+            <div class="ai-content">{{ answer | safe }}</div>
         </div>
     {% endif %}
 

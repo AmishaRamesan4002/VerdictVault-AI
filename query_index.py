@@ -1,9 +1,23 @@
 # query_data.py
 from elasticsearch import Elasticsearch
-import sys
+import sys,os,json
 
 es = Elasticsearch("http://localhost:9200")
 INDEX_NAME = "legal_documents"
+
+# This loads the file once when the server starts. Fast and efficient.
+LINKS_FILE = "hyperlinks.json"
+LINK_MAP = {}
+
+try:
+    if os.path.exists(LINKS_FILE):
+        with open(LINKS_FILE, "r", encoding="utf-8") as f:
+            LINK_MAP = json.load(f)
+        print(f"Loaded {len(LINK_MAP)} hyperlinks.")
+    else:
+        print(f"Warning: {LINKS_FILE} not found. Links will not work.")
+except Exception as e:
+    print(f"Error loading links: {e}")
 
 def search_judgments(query_text=None, year=None, bench=None):
     must_clauses = []
@@ -64,12 +78,17 @@ def search_judgments(query_text=None, year=None, bench=None):
     results = []
     for hit in response["hits"]["hits"]:
         src = hit["_source"]
+        filename = src.get('filename')
+
+        pdf_link = LINK_MAP.get(filename)
+
         results.append({
             "content": src.get("text", ""),
             "score": hit['_score'],
             "year": src.get('year'),
-            "filename": src.get('filename'),
-            "bench": src.get('bench')
+            "filename": filename,
+            "bench": src.get('bench'),
+            "link": pdf_link
         })
     
     # Return results AND the suggestion
