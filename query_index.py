@@ -16,7 +16,7 @@ except Exception as e:
     print(f"Error loading model: {e}. Make sure sentence-transformers is installed.")
     sys.exit(1)
 
-CHUNK_OVERLAP = 100       # Must match your indexing config
+CHUNK_OVERLAP = 200       # Must match your indexing config
 MAX_WORD_LIMIT = 15000    # Limit for fetching full document
 NEIGHBOR_WINDOW = 2       # Fallback: chunks before/after to fetch if doc is too big
 MAX_DOCS_TO_PROCESS = 3   # Top N documents to return
