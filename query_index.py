@@ -8,7 +8,7 @@ INDEX_NAME = "legal_documents"
 def search_judgments(query_text=None, year=None, bench=None):
     must_clauses = []
 
-    # Full-text or title search
+    # 1. Build the Search Query
     if query_text:
         must_clauses.append({
             "multi_match": {
@@ -18,35 +18,62 @@ def search_judgments(query_text=None, year=None, bench=None):
             }
         })
 
-    # Filter by year (exact numeric match)
     if year:
-        must_clauses.append({
-            "term": {"year": year}
-        })
+        must_clauses.append({"term": {"year": year}})
 
-    # Filter by bench (text match)
     if bench:
-        must_clauses.append({
-            "match": {"bench": bench}
-        })
+        must_clauses.append({"match": {"bench": bench}})
 
-    # Build search body
-    body = {"query": {"bool": {"must": must_clauses}}} if must_clauses else {"query": {"match_all": {}}}
+    # 2. Construct the Body with 'Suggest'
+    body = {
+        "query": {"bool": {"must": must_clauses}} if must_clauses else {"query": {"match_all": {}}},
+        # This part asks Elasticsearch for corrections
+        "suggest": {
+            "text": query_text,
+            "simple_phrase": {
+                "phrase": {
+                    "field": "text",
+                    "size": 1,
+                    "gram_size": 3,
+                    "direct_generator": [{
+                        "field": "text",
+                        "suggest_mode": "always"
+                    }],
+                    "highlight": {
+                        "pre_tag": "<em>",
+                        "post_tag": "</em>"
+                    }
+                }
+            }
+        }
+    }
 
     response = es.search(index=INDEX_NAME, body=body)
 
-    print(f"\n Search results for query: '{query_text or ''}', Year: '{year or ''}', Bench: '{bench or ''}'")
-    results=[]
+    # 3. Extract the "Did you mean?" Suggestion
+    suggest_text = None
+    if response.get('suggest'):
+        try:
+            suggestions = response['suggest']['simple_phrase'][0]['options']
+            if suggestions:
+                suggest_text = suggestions[0]['text']
+        except (IndexError, KeyError):
+            pass
+
+    # 4. Format Results
+    results = []
     for hit in response["hits"]["hits"]:
-        #get the text content from hit
         src = hit["_source"]
-        content=src.get("text", "")
-        print(f"Score: {hit['_score']:.2f} | Year: {src.get('year')} | Filename: {src.get('filename')}")
-        if src.get("bench"):
-            print(f"   Bench: {src.get('bench')}")
-        print()
-        results.append({"content": content,"score": hit['_score'],"year": src.get('year'), "filename": src.get('filename'), "bench": src.get('bench')})
-    return results
+        results.append({
+            "content": src.get("text", ""),
+            "score": hit['_score'],
+            "year": src.get('year'),
+            "filename": src.get('filename'),
+            "bench": src.get('bench')
+        })
+    
+    # Return results AND the suggestion
+    return results, suggest_text
 
 # Examples of usage
 if __name__ == "__main__":

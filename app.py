@@ -13,14 +13,33 @@ def search():
     query = request.form.get("query")
     mode = request.form.get("mode")  # "docs" or "rag"
 
-    retrieved_docs = retrieve_documents(query)
+    # Safely get filters
+    year = request.form.get("year")
+    bench = request.form.get("bench")
+
+    # Fix for "None" string bug
+    if not year or year == "None":
+        year = None
+    if not bench or bench == "None":
+        bench = None
+
+    # Retrieve docs AND suggestion
+    retrieved_docs, suggestion = retrieve_documents(query, year, bench)
+
+    # retrieved_docs = retrieve_documents(query)
+
+    # Don't suggest the same thing the user typed
+    if suggestion and suggestion.lower() == query.lower():
+        suggestion = None
 
     # Case 1: Return list of retrieved documents
     if mode == "docs":
         return render_template("results.html",
                                mode="docs",
                                query=query,
-                               documents=retrieved_docs)
+                               bench = bench,
+                               documents=retrieved_docs,
+                               suggestion = suggestion)
 
     # Case 2: Generate short answer using RAG
     elif mode == "rag":
@@ -28,7 +47,9 @@ def search():
         return render_template("results.html",
                                mode="rag",
                                query=query,
-                               answer=answer)
+                               bench=bench,
+                               answer=answer,
+                               suggestion=suggestion)
 
     else:
         return "Invalid selection"
