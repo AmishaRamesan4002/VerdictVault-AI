@@ -15,25 +15,41 @@ def search():
     year = request.form.get("year") or None
     bench = request.form.get("bench") or None
 
-    # Retrieve docs based on query (you may also use year/bench later)
-    retrieved_docs = retrieve_documents(query,year, bench)
+    # Safely get filters
+    year = request.form.get("year")
+    bench = request.form.get("bench")
+
+    # Fix for "None" string bug
+    if not year or year == "None":
+        year = None
+    if not bench or bench == "None":
+        bench = None
+
+    # Retrieve docs AND suggestion
+    retrieved_docs, suggestion = retrieve_documents(query, year, bench)
+
+    # retrieved_docs = retrieve_documents(query)
+
+    # Don't suggest the same thing the user typed
+    if suggestion and suggestion.lower() == query.lower():
+        suggestion = None
 
     if mode == "docs":
         return render_template("results.html",
                                mode="docs",
                                query=query,
-                               year=year,
-                               bench=bench,
-                               documents=retrieved_docs)
+                               bench = bench,
+                               documents=retrieved_docs,
+                               suggestion = suggestion)
 
     elif mode == "rag":
         answer = generate_answer(query, retrieved_docs)
         return render_template("results.html",
                                mode="rag",
                                query=query,
-                               year=year,
                                bench=bench,
-                               answer=answer)
+                               answer=answer,
+                               suggestion=suggestion)
 
     return "Invalid selection"
 

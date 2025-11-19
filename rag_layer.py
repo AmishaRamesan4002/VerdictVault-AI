@@ -21,7 +21,9 @@ except Exception as e:
 
 # Your retrieval function (written by teammate)
 def retrieve_documents(query, year=None, bench=None):
-    return search_judgments(query_text=query, year=None, bench=None)
+    # return search_judgments(query_text=query, year=None, bench=None)
+    results, suggestion = search_judgments(query_text=query, year=year, bench=bench)
+    return results, suggestion
     # print(f"Retrieving documents for query: '{query}'")
     # return [
     #     {"content": f"The main cause of World War I was a complex system of alliances, militarism, and imperialism."},
@@ -31,44 +33,59 @@ def retrieve_documents(query, year=None, bench=None):
     # ]
 
 # documents are the restrieved one
-def generate_answer(query, documents, max_docs=3):
+def generate_answer(query, documents, max_docs=5):
+    # 1. Build Context with clear separators
+    # We clearly label each document so the AI can cite them.
+    context_pieces = []
+    for i, doc in enumerate(documents[:max_docs]):
+        # We include the Year and Filename in the context so the AI can use them in the answer
+        meta_info = f"Source: {doc.get('filename', 'Unknown File')} ({doc.get('year', 'Unknown Year')})"
+        content = doc.get('content', '')
+        context_pieces.append(f"--- DOCUMENT {i+1} ---\n{meta_info}\nCONTENT:\n{content}\n")
 
-    # 1. Prepare context (combines documents into a single string)
-    # Using enumerate and list slicing for clear context creation
-    context = "\n\n".join(
-        f"Document {i+1}:\n{doc['content']}"
-        for i, doc in enumerate(documents[:max_docs])
-    )
+    context = "\n".join(context_pieces)
     
-    # 2. Construct the RAG Prompt
+    # 2. The Formatted Prompt
     prompt = f"""
-You are an expert Q&A assistant.
-Answer the following Query using ONLY the information provided in the Documents section below.
-Do not use any external knowledge.
+    You are a highly skilled Legal Research Assistant. 
+    Answer the user's query based STRICTLY on the provided documents.
 
-Query:
-{query}
+    User Query: "{query}"
 
-Documents:
----
-{context}
----
+    Instructions for Formatting:
+    1. Use clear headings with spacing.
+    2. **For the Case Analysis section, you MUST use bullet points for each document.** 3. Do not output one large paragraph. Break it down.
 
-If the answer cannot be found in the provided documents, you MUST respond with:
-"Not enough information in the provided documents."
-"""
+    Structure your response exactly like this:
     
-    print("\n--- Generating Answer with Gemini ---")
+    **➤ Executive Summary**
+    (2-3 sentences summarizing the answer.)
+
+    **➤ Key Legal Principles**
+    * (Principle 1)
+    * (Principle 2)
+
+    **➤ Case-by-Case Analysis**
+    * **Case 1 ({documents[0].get('filename', 'Doc 1') if documents else 'Doc 1'}):** (Analyze this specific case here...)
+    * **Case 2:** (Analyze the next case...)
+    * **Case 3:** (Analyze the next case...)
+
+    **➤ Conclusion**
+    (Final verdict based on the texts.)
+
+    --- RETRIEVED LEGAL DOCUMENTS ---
+    {context}
+    -----------------------------------
+    """
     
-    # 3. Call the Gemini API
-    # Using client.models.generate_content (the standard method)
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",  # ✅ Recommended and fast model for RAG
-        contents=prompt
-    )
-
-    return response.text.strip()
-
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return response.text.strip()
+    except Exception as e:
+        return f"Error generating answer: {e}"
 # --- Example Usage ---
 
 # # 1. Define the user's question
