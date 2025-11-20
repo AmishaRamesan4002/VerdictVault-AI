@@ -1,11 +1,6 @@
 version = 1
 revision = 2
-requires-python = ">=3.10, <3.13"
-resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version < '3.11'",
-]
+requires-python = ">=3.13"
 
 [[package]]
 name = "annotated-types"
@@ -373,6 +368,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "joblib"
 version = "1.5.2"
 source = { registry = "https://pypi.org/simple" }
@@ -448,6 +444,14 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ad/b4/073e3fd494f7853fd4e59f5ae56c49f672e081e65f17ef363224e60530ab/langsmith-0.4.43.tar.gz", hash = "sha256:75c2468ab740438adfb32af8595ad8837c3af2bd1cdaf057d534182c5a07407a", size = 984142, upload-time = "2025-11-15T00:32:12.454Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/5c/521a3d8295e2e7caea67032e65554866293b6dc8e934bd86be8cc1f7b955/langsmith-0.4.43-py3-none-any.whl", hash = "sha256:c97846a0b15061bc15844aac32fd1ce4a8e50983905f80a0d6079bb41b112ae3", size = 410232, upload-time = "2025-11-15T00:32:10.557Z" },
+=======
+name = "markdown"
+version = "3.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/ab/7dd27d9d863b3376fcf23a5a13cb5d024aed1db46f963f1b5735ae43b3be/markdown-3.10.tar.gz", hash = "sha256:37062d4f2aa4b2b6b32aefb80faa300f82cc790cb949a35b8caede34f2b68c0e", size = 364931, upload-time = "2025-11-03T19:51:15.007Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/81/54e3ce63502cd085a0c556652a4e1b919c45a446bd1e5300e10c44c8c521/markdown-3.10-py3-none-any.whl", hash = "sha256:b5b99d6951e2e4948d939255596523444c0e677c669700b1d17aa4a8a464cb7c", size = 107678, upload-time = "2025-11-03T19:51:13.887Z" },
+>>>>>>> f23256f21aae899ec29c1196945d9fb528df4a78
 ]
 
 [[package]]
@@ -1586,7 +1590,11 @@ dependencies = [
     { name = "flask" },
     { name = "google" },
     { name = "google-genai" },
+<<<<<<< HEAD
     { name = "langchain-text-splitters" },
+=======
+    { name = "markdown" },
+>>>>>>> f23256f21aae899ec29c1196945d9fb528df4a78
     { name = "ndjson" },
     { name = "pandas" },
     { name = "pyarrow" },
@@ -1604,7 +1612,11 @@ requires-dist = [
     { name = "flask", specifier = ">=3.1.2" },
     { name = "google", specifier = ">=3.0.0" },
     { name = "google-genai", specifier = ">=1.50.1" },
+<<<<<<< HEAD
     { name = "langchain-text-splitters", specifier = ">=1.0.0" },
+=======
+    { name = "markdown", specifier = ">=3.10" },
+>>>>>>> f23256f21aae899ec29c1196945d9fb528df4a78
     { name = "ndjson", specifier = ">=0.3.1" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pyarrow", specifier = ">=22.0.0" },

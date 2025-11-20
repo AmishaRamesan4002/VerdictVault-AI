@@ -21,7 +21,9 @@ except Exception as e:
 
 # Your retrieval function (written by teammate)
 def retrieve_documents(query, year=None, bench=None):
-    return search_judgments(query_text=query, year=None, bench=None)
+    # return search_judgments(query_text=query, year=None, bench=None)
+    results, suggestion = search_judgments(query_text=query, year=year, bench=bench)
+    return results, suggestion
     # print(f"Retrieving documents for query: '{query}'")
     # return [
     #     {"content": f"The main cause of World War I was a complex system of alliances, militarism, and imperialism."},
@@ -31,43 +33,59 @@ def retrieve_documents(query, year=None, bench=None):
     # ]
 
 # documents are the restrieved one
-def generate_answer(query, documents, max_docs=3):
+def generate_answer(query, documents, max_docs=5):
+    # 1. Build Context with clear separators
+    # We clearly label each document so the AI can cite them.
+    context_pieces = []
+    for i, doc in enumerate(documents[:max_docs]):
+        # We include the Year and Filename in the context so the AI can use them in the answer
+        meta_info = f"Source: {doc.get('filename', 'Unknown File')} ({doc.get('year', 'Unknown Year')})"
+        content = doc.get('content', '')
+        context_pieces.append(f"--- DOCUMENT {i+1} ---\n{meta_info}\nCONTENT:\n{content}\n")
 
-    # 1. Prepare context (combines documents into a single string)
-    # Using enumerate and list slicing for clear context creation
-    context = "\n\n".join(
-        f"Document {i+1}:\n{doc['content']}"
-        for i, doc in enumerate(documents[:max_docs])
-    )
+    context = "\n".join(context_pieces)
     
-    # 2. Construct the RAG Prompt
+    # 2. The Formatted Prompt
     prompt = f"""
-You are an expert Q&A assistant.
-Answer the following Query using ONLY the information provided in the Documents section below.
-Do not use any external knowledge.
+    You are a highly skilled Legal Research Assistant. 
+    Answer the user's query based STRICTLY on the provided documents.
 
-Query:
-{query}
+    User Query: "{query}"
 
-Documents:
----
-{context}
----
-"""
-#     If the answer cannot be found in the provided documents, you MUST respond with:
-# "Not enough information in the provided documents."
+    Instructions for Formatting:
+    1. Use clear headings with spacing.
+    2. **For the Case Analysis section, you MUST use bullet points for each document.** 3. Do not output one large paragraph. Break it down.
+
+    Structure your response exactly like this:
     
-    print("\n--- Generating Answer with Gemini ---")
-    print(f"Prompt:\n{prompt}\n")
-    # 3. Call the Gemini API
-    # Using client.models.generate_content (the standard method)
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",  # ✅ Recommended and fast model for RAG
-        contents=prompt
-    )
+    **➤ Executive Summary**
+    (2-3 sentences summarizing the answer.)
 
-    return response.text.strip()
+    **➤ Key Legal Principles**
+    * (Principle 1)
+    * (Principle 2)
 
+    **➤ Case-by-Case Analysis**
+    * **Case 1 ({documents[0].get('filename', 'Doc 1') if documents else 'Doc 1'}):** (Analyze this specific case here...)
+    * **Case 2:** (Analyze the next case...)
+    * **Case 3:** (Analyze the next case...)
+
+    **➤ Conclusion**
+    (Final verdict based on the texts.)
+
+    --- RETRIEVED LEGAL DOCUMENTS ---
+    {context}
+    -----------------------------------
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return response.text.strip()
+    except Exception as e:
+        return f"Error generating answer: {e}"
 # --- Example Usage ---
 
 # # 1. Define the user's question
@@ -89,3 +107,69 @@ Documents:
 # print("-" * 50)
 # print(f"Generated RAG Answer:\n{final_answer}")
 # print("="*50)
+
+
+
+# --- NEW FUNCTION FOR FILTER EXTRACTION ---
+
+def extract_filters_from_query(query):
+    """
+    Uses the Gemini model to extract Year and Bench from a user query.
+    Returns the extracted year (str or None) and bench (str or None).
+    """
+    extraction_prompt = f"""
+    Analyze the following user query and extract the most likely **Year** (a four-digit number) 
+    and **Bench/Court Name** (e.g., 'Court No. 5', 'Division Bench', 'Full Bench'). 
+    If a filter is not present or ambiguous, return 'None' for that field.
+
+    User Query: "{query}"
+
+    Output the results as a single JSON object.
+
+    Example 1:
+    Query: "landmark judgment on defamation in 2022 by the bench People Hiralal J. Kania, Saiyid Fazal Ali, Mehr Chand Mahajan"
+    Output: {{"year": "2022", "bench": "Hiralal J. Kania, Saiyid Fazal Ali, Mehr Chand Mahajan"}}
+
+    Example 2:
+    Query: "State of Maharashtra by bench People B.K. Mukherjea"
+    Output: {{"year": "None", "bench": "B.K. Mukherjea"}}
+
+    Example 3:
+    Query: "right to privacy bench Saiyid Fazal Ali, Mehr Chand Mahajan in 2000"
+    Output: {{"year": "2000", "bench": "Saiyid Fazal Ali, Mehr Chand Mahajan"}}
+
+    Example 4:
+    Query: "State of Bombay"
+    Output: {{"year": "None", "bench": "None"}}
+
+    OUTPUT JSON:
+    """
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=extraction_prompt,
+            config={"response_mime_type": "application/json"} # Ensure JSON output
+        )
+        
+        # Parse the JSON output
+        import json
+        
+        # Clean the text to ensure valid JSON (sometimes models add markdown formatting)
+        clean_text = response.text.strip().lstrip('```json').rstrip('```').strip()
+        
+        filter_data = json.loads(clean_text)
+        
+        # Use .get() and clean up 'None' string to actual None
+        year = filter_data.get("year")
+        bench = filter_data.get("bench")
+
+        return (
+            year if year and year.lower() != 'none' else None, 
+            bench if bench and bench.lower() != 'none' else None
+        )
+
+    except Exception as e:
+        print(f"Error during filter extraction: {e}")
+        # Return None, None on error to gracefully fall back to unfiltered search
+        return None, None
