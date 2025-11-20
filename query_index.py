@@ -1,4 +1,3 @@
-# query_data.py
 from elasticsearch import Elasticsearch
 from sentence_transformers import SentenceTransformer
 import sys
@@ -6,7 +5,8 @@ import sys
 # ---------------- CONFIGURATION ----------------
 es = Elasticsearch("http://localhost:9200")
 INDEX_NAME = "legal_documents"
-
+TOTAL_CHUNKS_TO_FETCH = 40
+KEY_WORD_BOOST = 0.3  # Boost for keyword matching in hybrid search
 # RAG Configuration
 try:
     # Load model once at startup
@@ -19,7 +19,11 @@ except Exception as e:
 CHUNK_OVERLAP = 200       # Must match your indexing config
 MAX_WORD_LIMIT = 15000    # Limit for fetching full document
 NEIGHBOR_WINDOW = 2       # Fallback: chunks before/after to fetch if doc is too big
-MAX_DOCS_TO_PROCESS = 3   # Top N documents to return
+MAX_DOCS_TO_PROCESS = 5   # Hard limit on number of docs
+
+# --- NEW THRESHOLDER CONFIG ---
+DROP_THRESHOLD = 0.40     # 20% drop. If next doc is 20% worse than previous, STOP.
+MIN_SCORE_VARIANCE = 0.05 # If top 3 docs have < 5% difference, it's "Flat/Ambiguous".
 
 # ---------------- HELPER FUNCTIONS ----------------
 
@@ -80,27 +84,26 @@ def get_chunks_from_es(parent_id, strategy="all", start=0, end=0):
 # ---------------- MAIN SEARCH FUNCTION ----------------
 
 def search_judgments(query_text=None, year=None, bench=None):
-    # 1. Build Filters (Shared by both Vector and Keyword search)
+    
+    # 1. Build Filters
     filter_clauses = []
-    if year:
-        filter_clauses.append({"term": {"year": year}})
-    if bench:
-        filter_clauses.append({"match": {"bench": bench}})
+    if year: filter_clauses.append({"term": {"year": year}})
+    if bench: filter_clauses.append({"match": {"bench": bench}})
 
-    # 2. Perform Search (Hybrid if text exists, Filter-only if not)
+    # 2. Perform Search
     if query_text:
         query_vector = EMBEDDING_MODEL.encode(query_text).tolist()
         
-        # Hybrid Query: kNN + Keyword Match
+        # Hybrid Query
         response = es.search(
             index=INDEX_NAME,
-            size=20, # Get enough seed chunks to group
+            size=TOTAL_CHUNKS_TO_FETCH, 
             knn={
                 "field": "embeddings",
                 "query_vector": query_vector,
-                "k": 20,
+                "k": TOTAL_CHUNKS_TO_FETCH,
                 "num_candidates": 100,
-                "filter": filter_clauses # Apply filters to vector search
+                "filter": filter_clauses 
             },
             query={
                 "bool": {
@@ -108,48 +111,92 @@ def search_judgments(query_text=None, year=None, bench=None):
                         "multi_match": {
                             "query": query_text,
                             "fields": ["text", "bench", "filename"],
-                            "boost": 0.3
+                            "boost": KEY_WORD_BOOST#0.05
                         }
                     },
-                    "filter": filter_clauses # Apply filters to keyword search
+                    "filter": filter_clauses 
                 }
             },
             _source=["parent_doc_id", "chunk_index", "filename", "year", "bench", "_score"]
         )
     else:
-        # Metadata only search (No vector)
         body = {"query": {"bool": {"filter": filter_clauses}}} if filter_clauses else {"query": {"match_all": {}}}
-        response = es.search(index=INDEX_NAME, body=body, size=20)
+        response = es.search(index=INDEX_NAME, body=body, size=TOTAL_CHUNKS_TO_FETCH)
 
-    print(f"\n Search results for query: '{query_text or ''}', Year: '{year or ''}', Bench: '{bench or ''}'")
+    print(f"\n🔎 Query: '{query_text or ''}'")
 
     # 3. Group Chunks by Parent Document
     parent_docs = {}
     for hit in response["hits"]["hits"]:
         src = hit["_source"]
         p_id = src.get("parent_doc_id")
-        if p_id is None: continue # Skip if old data format
+        if p_id is None: continue 
         
         if p_id not in parent_docs:
             parent_docs[p_id] = {
                 "min_idx": src.get('chunk_index', 0), 
                 "max_idx": src.get('chunk_index', 0),
                 "score": hit['_score'],
-                "metadata": src # Store full metadata
+                "metadata": src 
             }
         else:
-            # Expand range and accumulate score
             parent_docs[p_id]["min_idx"] = min(parent_docs[p_id]["min_idx"], src.get('chunk_index', 0))
             parent_docs[p_id]["max_idx"] = max(parent_docs[p_id]["max_idx"], src.get('chunk_index', 0))
             parent_docs[p_id]["score"] += hit['_score']
 
-    # 4. Process Top Results (Stitch & Deduplicate)
-    results = []
+    # Sort all candidates by score
+    sorted_parents = sorted(parent_docs.items(), key=lambda item: item[1]['score'], reverse=True)
+    #print parent_docs file name and score for debugging
+    print(f"   📄 Found {len(sorted_parents)} candidate documents."
+          f" (Filtered by Year: {year}, Bench: {bench})"
+          f"\n   Top Candidates:")
+    for i, (p_id, info) in enumerate(sorted_parents):
+        meta = info['metadata']
+        print(f"   {i+1}. Score: {info['score']:.2f} | Year: {meta.get('year')} | Filename: {meta.get('filename')}")
+    # ====================================================
+    # 4. INTELLIGENT THRESHOLDING (The New Logic)
+    # ====================================================
+    final_parents_to_process = []
     
-    # Sort by score and take top N
-    sorted_parents = sorted(parent_docs.items(), key=lambda item: item[1]['score'], reverse=True)[:MAX_DOCS_TO_PROCESS]
+    if sorted_parents:
+        # Always take the Top 1 result
+        final_parents_to_process.append(sorted_parents[0])
+        top_score = sorted_parents[0][1]['score']
+        
+        print(f"   📊 Top Doc Score: {top_score:.4f}")
 
-    for p_id, info in sorted_parents:
+        for i in range(len(sorted_parents) - 1):
+            # Check if we already hit our hard limit
+            if len(final_parents_to_process) >= MAX_DOCS_TO_PROCESS:
+                break
+
+            prev_score = sorted_parents[i][1]['score']
+            next_doc = sorted_parents[i+1]
+            next_score = next_doc[1]['score']
+            
+            # Calculate relative drop percentage
+            drop_pct = (prev_score - next_score) / prev_score if prev_score > 0 else 0
+            
+            # LOGIC 1: The "Elbow" Cutoff
+            # If the score drops by more than 20% (DROP_THRESHOLD), assume relevance is lost.
+            if drop_pct > DROP_THRESHOLD:
+                print(f"   ✂️  Cutoff: Doc {i+2} dropped by {drop_pct:.1%}. Stopping retrieval.")
+                break
+            
+            # LOGIC 2: The "Flat & Low" Ambiguity Check
+            # If we are at Doc 2, and it's basically identical to Doc 1 (tiny drop), 
+            # but the overall scores are low, we might optionally stop to avoid noise.
+            # (Here we just rely on the Elbow. If curve is flat, we take them until MAX limit).
+            
+            final_parents_to_process.append(next_doc)
+
+    # ====================================================
+    # 5. Process Final List
+    # ====================================================
+    results = []
+    print(f"   📚 Processing {len(final_parents_to_process)} documents after thresholding...\n")
+
+    for p_id, info in final_parents_to_process:
         meta = info['metadata']
         final_content = ""
         
@@ -194,4 +241,3 @@ if __name__ == "__main__":
     bench = input("Enter bench name (or leave blank): ").strip() or None
 
     search_judgments(query_text=query_text, year=year, bench=bench)
-    
