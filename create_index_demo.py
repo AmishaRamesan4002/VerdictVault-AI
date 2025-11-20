@@ -3,6 +3,7 @@ import ndjson
 
 es = Elasticsearch("http://localhost:9200")
 INDEX_NAME = "legal_documents"
+FILE_PATH = r"/home/akshay2/Downloads/parsed_all.ndjson"
 
 mapping = {
     "settings": {
@@ -38,7 +39,7 @@ es.indices.create(index=INDEX_NAME, body=mapping)
 print(f"Created index: {INDEX_NAME}")
 
 # Load data
-with open(r"D:\DS_PhD\IR\Project\parsed_all.ndjson", "r", encoding="utf-8") as f:
+with open(FILE_PATH, "r", encoding="utf-8") as f:
     data = ndjson.load(f)
 
 # Bulk index
