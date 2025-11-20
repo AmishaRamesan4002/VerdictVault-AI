@@ -1,0 +1,4 @@
+Gemini client initialized successfully.
+ * Serving Flask app 'app'
+ * Debug mode: on
+Gemini client initialized successfully.

@@ -107,3 +107,69 @@ def generate_answer(query, documents, max_docs=5):
 # print("-" * 50)
 # print(f"Generated RAG Answer:\n{final_answer}")
 # print("="*50)
+
+
+
+# --- NEW FUNCTION FOR FILTER EXTRACTION ---
+
+def extract_filters_from_query(query):
+    """
+    Uses the Gemini model to extract Year and Bench from a user query.
+    Returns the extracted year (str or None) and bench (str or None).
+    """
+    extraction_prompt = f"""
+    Analyze the following user query and extract the most likely **Year** (a four-digit number) 
+    and **Bench/Court Name** (e.g., 'Court No. 5', 'Division Bench', 'Full Bench'). 
+    If a filter is not present or ambiguous, return 'None' for that field.
+
+    User Query: "{query}"
+
+    Output the results as a single JSON object.
+
+    Example 1:
+    Query: "landmark judgment on defamation in 2022 by the bench People Hiralal J. Kania, Saiyid Fazal Ali, Mehr Chand Mahajan"
+    Output: {{"year": "2022", "bench": "Hiralal J. Kania, Saiyid Fazal Ali, Mehr Chand Mahajan"}}
+
+    Example 2:
+    Query: "State of Maharashtra by bench People B.K. Mukherjea"
+    Output: {{"year": "None", "bench": "B.K. Mukherjea"}}
+
+    Example 3:
+    Query: "right to privacy bench Saiyid Fazal Ali, Mehr Chand Mahajan in 2000"
+    Output: {{"year": "2000", "bench": "Saiyid Fazal Ali, Mehr Chand Mahajan"}}
+
+    Example 4:
+    Query: "State of Bombay"
+    Output: {{"year": "None", "bench": "None"}}
+
+    OUTPUT JSON:
+    """
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=extraction_prompt,
+            config={"response_mime_type": "application/json"} # Ensure JSON output
+        )
+        
+        # Parse the JSON output
+        import json
+        
+        # Clean the text to ensure valid JSON (sometimes models add markdown formatting)
+        clean_text = response.text.strip().lstrip('```json').rstrip('```').strip()
+        
+        filter_data = json.loads(clean_text)
+        
+        # Use .get() and clean up 'None' string to actual None
+        year = filter_data.get("year")
+        bench = filter_data.get("bench")
+
+        return (
+            year if year and year.lower() != 'none' else None, 
+            bench if bench and bench.lower() != 'none' else None
+        )
+
+    except Exception as e:
+        print(f"Error during filter extraction: {e}")
+        # Return None, None on error to gracefully fall back to unfiltered search
+        return None, None
