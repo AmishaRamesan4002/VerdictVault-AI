@@ -37,9 +37,29 @@ def search():
         print(f"Filter source is 'auto'. Attempting to extract filters from query: '{query}'")
         year, bench = extract_filters_from_query(query)
 
-        
+    # 3. Extract advanced parameters from request
+    # Helper to safely convert types
+    def get_arg(name, type_func):
+        val = request.form.get(name)
+        if val and val.strip():
+            try:
+                return type_func(val)
+            except ValueError:
+                return None
+        return None
+
+    search_kwargs = {}
+    
+    if val := get_arg("CHUNK_OVERLAP", int): search_kwargs["chunk_overlap"] = val
+    if val := get_arg("MAX_WORD_LIMIT", int): search_kwargs["max_word_limit"] = val
+    if val := get_arg("MAX_DOCS_TO_PROCESS", int): search_kwargs["max_docs"] = val
+    if val := get_arg("KEY_WORD_BOOST", float): search_kwargs["keyword_boost"] = val
+    if val := get_arg("TOTAL_CHUNKS_TO_FETCH", int): search_kwargs["total_chunks"] = val
+    if val := get_arg("DROP_THRESHOLD", float): search_kwargs["drop_threshold"] = val
+    if val := get_arg("MIN_SCORE_VARIANCE", float): search_kwargs["min_score_variance"] = val
+
     # Retrieve docs AND suggestion
-    retrieved_docs, suggestion = retrieve_documents(query, year, bench)
+    retrieved_docs, suggestion = retrieve_documents(query, year, bench, **search_kwargs)
     # print(retrieved_docs)
     # print(suggestion)
 

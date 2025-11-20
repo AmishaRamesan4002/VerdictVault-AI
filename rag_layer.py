@@ -20,9 +20,9 @@ except Exception as e:
     # Exit or handle error if the client can't be created
 
 # Your retrieval function (written by teammate)
-def retrieve_documents(query, year=None, bench=None):
+def retrieve_documents(query, year=None, bench=None, **kwargs):
     # return search_judgments(query_text=query, year=None, bench=None)
-    results, suggestion = search_judgments(query_text=query, year=year, bench=bench)
+    results, suggestion = search_judgments(query_text=query, year=year, bench=bench, **kwargs)
     return results, suggestion
     # print(f"Retrieving documents for query: '{query}'")
     # return [

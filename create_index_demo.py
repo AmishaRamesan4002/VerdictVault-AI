@@ -19,7 +19,6 @@ text_splitter = RecursiveCharacterTextSplitter(
 
 es = Elasticsearch("http://localhost:9200")
 INDEX_NAME = "legal_documents"
-FILE_PATH = r"/home/akshay2/Downloads/parsed_all.ndjson"
 
 # 3. Mapping (Slightly optimized for kNN)
 mapping = {
@@ -65,7 +64,7 @@ mapping = {
 # print(f"Created index: {INDEX_NAME}")
 
 # Load data
-with open(FILE_PATH, "r", encoding="utf-8") as f:
+with open(r"..\parsed_all.ndjson", "r", encoding="utf-8") as f:
     data = ndjson.load(f)
 
 print(f"Found {len(data)} source documents. Starting chunking and indexing...")

@@ -14,7 +14,11 @@ dependencies = [
     "flask>=3.1.2",
     "google>=3.0.0",
     "google-genai>=1.50.1",
-    "markdown>=3.10",
+    "sentence-transformers>=5.1.2",
+    "langchain-text-splitters>=1.0.0",
+    "torch==2.5.1+cu124",
+    "torchvision==0.20.1+cu124",
+    "torchaudio==2.5.1+cu124",
 ]
 
 [[tool.uv.index]]
