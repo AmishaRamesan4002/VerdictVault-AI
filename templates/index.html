@@ -115,16 +115,162 @@
             background: #1565c0;
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
         }
+
+        /* Settings Button */
+        .settings-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px 20px;
+            background: #ffffff;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: 0.3s;
+        }
+
+        .settings-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Modal Styling */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.8em;
+            cursor: pointer;
+            color: #666;
+            line-height: 1;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .param-group {
+            margin-bottom: 20px;
+        }
+
+        .param-label {
+            font-weight: 500;
+            color: #5f6368;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .param-desc {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .param-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .modal-btn-secondary {
+            background: #f1f3f4;
+            color: #5f6368;
+        }
+
+        .modal-btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .modal-btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .modal-btn-primary:hover {
+            background: #1565c0;
+        }
     </style>
 </head>
 
 <body>
 
+    <button class="settings-btn" id="openSettings">⚙️ Settings</button>
+
     <div class="container">
         <h2><i class="fas fa-gavel" style="margin-right: 10px; color: var(--secondary-color);"></i>Legal Retrieval
             System</h2>
 
-        <form action="/search" method="POST">
+        <form action="/search" method="POST" id="searchForm">
 
             <label for="query-input">Enter Query:</label>
             <input type="text" id="query-input" name="query" required
@@ -154,8 +300,74 @@
                     Answer (RAG)</label>
             </div>
 
+            <!-- Hidden settings inputs -->
+            <input type="hidden" name="CHUNK_OVERLAP" id="CHUNK_OVERLAP" value="{{ settings.CHUNK_OVERLAP }}">
+            <input type="hidden" name="MAX_WORD_LIMIT" id="MAX_WORD_LIMIT" value="{{ settings.MAX_WORD_LIMIT }}">
+            <input type="hidden" name="MAX_DOCS_TO_PROCESS" id="MAX_DOCS_TO_PROCESS" value="{{ settings.MAX_DOCS_TO_PROCESS }}">
+            <input type="hidden" name="KEY_WORD_BOOST" id="KEY_WORD_BOOST" value="{{ settings.KEY_WORD_BOOST }}">
+            <input type="hidden" name="TOTAL_CHUNKS_TO_FETCH" id="TOTAL_CHUNKS_TO_FETCH" value="{{ settings.TOTAL_CHUNKS_TO_FETCH }}">
+            <input type="hidden" name="DROP_THRESHOLD" id="DROP_THRESHOLD" value="{{ settings.DROP_THRESHOLD }}">
+            <input type="hidden" name="MIN_SCORE_VARIANCE" id="MIN_SCORE_VARIANCE" value="{{ settings.MIN_SCORE_VARIANCE }}">
+
             <button class="btn" type="submit"><i class="fas fa-search"></i> Search Judgments</button>
         </form>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Search Settings</h3>
+                <button class="close-btn" id="closeSettings">&times;</button>
+            </div>
+
+            <div class="param-group">
+                <label class="param-label">Chunk Overlap</label>
+                <input type="number" class="param-input" id="s_CHUNK_OVERLAP" value="{{ settings.CHUNK_OVERLAP }}">
+                <div class="param-desc">Number of overlapping characters between chunks. Matches index chunking.</div>
+            </div>
+
+            <div class="param-group">
+                <label class="param-label">Max Word Limit</label>
+                <input type="number" class="param-input" id="s_MAX_WORD_LIMIT" value="{{ settings.MAX_WORD_LIMIT }}">
+                <div class="param-desc">Maximum words allowed when fetching a full document before falling back to a windowed fetch.</div>
+            </div>
+
+            <div class="param-group">
+                <label class="param-label">Max Documents To Process</label>
+                <input type="number" class="param-input" id="s_MAX_DOCS_TO_PROCESS" value="{{ settings.MAX_DOCS_TO_PROCESS }}">
+                <div class="param-desc">Hard cap on how many documents will be retrieved and returned.</div>
+            </div>
+
+            <div class="param-group">
+                <label class="param-label">Keyword Boost</label>
+                <input type="number" step="0.01" class="param-input" id="s_KEY_WORD_BOOST" value="{{ settings.KEY_WORD_BOOST }}">
+                <div class="param-desc">Relative boost applied to keyword match in hybrid search (0-1 recommended).</div>
+            </div>
+
+            <div class="param-group">
+                <label class="param-label">Total Chunks To Fetch</label>
+                <input type="number" class="param-input" id="s_TOTAL_CHUNKS_TO_FETCH" value="{{ settings.TOTAL_CHUNKS_TO_FETCH }}">
+                <div class="param-desc">How many kNN chunks to retrieve for reranking (affects performance).</div>
+            </div>
+
+            <div class="param-group">
+                <label class="param-label">Drop Threshold</label>
+                <input type="number" step="0.01" class="param-input" id="s_DROP_THRESHOLD" value="{{ settings.DROP_THRESHOLD }}">
+                <div class="param-desc">Relative score drop (0-1). If next doc drops more, retrieval stops (Elbow cutoff).</div>
+            </div>
+
+            <div class="param-group">
+                <label class="param-label">Min Score Variance</label>
+                <input type="number" step="0.01" class="param-input" id="s_MIN_SCORE_VARIANCE" value="{{ settings.MIN_SCORE_VARIANCE }}">
+                <div class="param-desc">Used to detect flat/ambiguous result sets (0-1).</div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-secondary" id="cancelSettings">Cancel</button>
+                <button class="modal-btn modal-btn-primary" id="saveSettings">Save Settings</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -171,9 +383,45 @@
 
         // Set initial state on load
         document.addEventListener('DOMContentLoaded', () => {
-            // Read the current value of the select menu to set the initial visibility
             const selectElement = document.getElementById('filter-source-select');
             toggleFilterFields(selectElement.value);
+        });
+
+        // Settings modal handlers
+        const modal = document.getElementById('settingsModal');
+        const openBtn = document.getElementById('openSettings');
+        const closeBtn = document.getElementById('closeSettings');
+        const cancelBtn = document.getElementById('cancelSettings');
+        const saveBtn = document.getElementById('saveSettings');
+
+        openBtn.addEventListener('click', () => {
+            modal.classList.add('active');
+        });
+
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        saveBtn.addEventListener('click', () => {
+            document.getElementById('CHUNK_OVERLAP').value = document.getElementById('s_CHUNK_OVERLAP').value;
+            document.getElementById('MAX_WORD_LIMIT').value = document.getElementById('s_MAX_WORD_LIMIT').value;
+            document.getElementById('MAX_DOCS_TO_PROCESS').value = document.getElementById('s_MAX_DOCS_TO_PROCESS').value;
+            document.getElementById('KEY_WORD_BOOST').value = document.getElementById('s_KEY_WORD_BOOST').value;
+            document.getElementById('TOTAL_CHUNKS_TO_FETCH').value = document.getElementById('s_TOTAL_CHUNKS_TO_FETCH').value;
+            document.getElementById('DROP_THRESHOLD').value = document.getElementById('s_DROP_THRESHOLD').value;
+            document.getElementById('MIN_SCORE_VARIANCE').value = document.getElementById('s_MIN_SCORE_VARIANCE').value;
+            modal.classList.remove('active');
+        });
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
         });
     </script>
 
