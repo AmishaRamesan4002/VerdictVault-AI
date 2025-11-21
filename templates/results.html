@@ -5,6 +5,15 @@
     <title>VerdictVault Results</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #1a73e8;
+            --secondary-color: #34a853;
+            --text-color: #3c4043;
+            --background-color: #f7f9fc;
+            --card-background: #ffffff;
+            --border-color: #dadce0;
+        }
+
         body { 
             font-family: 'Poppins', sans-serif; 
             margin: 0; 
@@ -97,10 +106,156 @@
             border-radius: 6px; font-weight: 500;
         }
         .back-btn:hover { background: #0056b3; }
+
+        /* Settings Button */
+        .settings-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px 20px;
+            background: #ffffff;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: 0.3s;
+        }
+
+        .settings-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Modal Styling */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.8em;
+            cursor: pointer;
+            color: #666;
+            line-height: 1;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .param-group {
+            margin-bottom: 20px;
+        }
+
+        .param-label {
+            font-weight: 500;
+            color: #5f6368;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .param-desc {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .param-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .modal-btn-secondary {
+            background: #f1f3f4;
+            color: #5f6368;
+        }
+
+        .modal-btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .modal-btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .modal-btn-primary:hover {
+            background: #1565c0;
+        }
     </style>
 </head>
 
 <body>
+
+<button class="settings-btn" id="openSettings">⚙️ Settings</button>
 
 <div class="container">
     <h2>Search Results</h2>
@@ -166,6 +321,119 @@
         <a class="back-btn" href="/">Start New Search</a>
     </div>
 </div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Search Settings</h3>
+            <button class="close-btn" id="closeSettings">&times;</button>
+        </div>
+
+        <div class="param-group">
+            <label class="param-label">Chunk Overlap</label>
+            <input type="number" class="param-input" id="s_CHUNK_OVERLAP" value="{{ settings.CHUNK_OVERLAP }}">
+            <div class="param-desc">Number of overlapping characters between chunks.</div>
+        </div>
+
+        <div class="param-group">
+            <label class="param-label">Max Word Limit</label>
+            <input type="number" class="param-input" id="s_MAX_WORD_LIMIT" value="{{ settings.MAX_WORD_LIMIT }}">
+            <div class="param-desc">Maximum words before windowed fetch.</div>
+        </div>
+
+        <div class="param-group">
+            <label class="param-label">Max Documents To Process</label>
+            <input type="number" class="param-input" id="s_MAX_DOCS_TO_PROCESS" value="{{ settings.MAX_DOCS_TO_PROCESS }}">
+            <div class="param-desc">Hard cap on documents returned.</div>
+        </div>
+
+        <div class="param-group">
+            <label class="param-label">Keyword Boost</label>
+            <input type="number" step="0.01" class="param-input" id="s_KEY_WORD_BOOST" value="{{ settings.KEY_WORD_BOOST }}">
+            <div class="param-desc">Boost for keyword match (0-1).</div>
+        </div>
+
+        <div class="param-group">
+            <label class="param-label">Total Chunks To Fetch</label>
+            <input type="number" class="param-input" id="s_TOTAL_CHUNKS_TO_FETCH" value="{{ settings.TOTAL_CHUNKS_TO_FETCH }}">
+            <div class="param-desc">kNN chunks for reranking.</div>
+        </div>
+
+        <div class="param-group">
+            <label class="param-label">Drop Threshold</label>
+            <input type="number" step="0.01" class="param-input" id="s_DROP_THRESHOLD" value="{{ settings.DROP_THRESHOLD }}">
+            <div class="param-desc">Score drop cutoff (0-1).</div>
+        </div>
+
+        <div class="param-group">
+            <label class="param-label">Min Score Variance</label>
+            <input type="number" step="0.01" class="param-input" id="s_MIN_SCORE_VARIANCE" value="{{ settings.MIN_SCORE_VARIANCE }}">
+            <div class="param-desc">Variance threshold (0-1).</div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="cancelSettings">Cancel</button>
+            <button class="modal-btn modal-btn-primary" id="saveSettings">Save & Re-run Search</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form for re-running search with new settings -->
+<form action="/search" method="POST" id="reRunForm" style="display:none;">
+    <input type="hidden" name="query" value="{{ query }}">
+    <input type="hidden" name="mode" value="{{ mode }}">
+    <input type="hidden" name="filter_source" value="auto">
+    <input type="hidden" name="CHUNK_OVERLAP" id="r_CHUNK_OVERLAP" value="{{ settings.CHUNK_OVERLAP }}">
+    <input type="hidden" name="MAX_WORD_LIMIT" id="r_MAX_WORD_LIMIT" value="{{ settings.MAX_WORD_LIMIT }}">
+    <input type="hidden" name="MAX_DOCS_TO_PROCESS" id="r_MAX_DOCS_TO_PROCESS" value="{{ settings.MAX_DOCS_TO_PROCESS }}">
+    <input type="hidden" name="KEY_WORD_BOOST" id="r_KEY_WORD_BOOST" value="{{ settings.KEY_WORD_BOOST }}">
+    <input type="hidden" name="TOTAL_CHUNKS_TO_FETCH" id="r_TOTAL_CHUNKS_TO_FETCH" value="{{ settings.TOTAL_CHUNKS_TO_FETCH }}">
+    <input type="hidden" name="DROP_THRESHOLD" id="r_DROP_THRESHOLD" value="{{ settings.DROP_THRESHOLD }}">
+    <input type="hidden" name="MIN_SCORE_VARIANCE" id="r_MIN_SCORE_VARIANCE" value="{{ settings.MIN_SCORE_VARIANCE }}">
+</form>
+
+<script>
+    // Settings modal handlers
+    const modal = document.getElementById('settingsModal');
+    const openBtn = document.getElementById('openSettings');
+    const closeBtn = document.getElementById('closeSettings');
+    const cancelBtn = document.getElementById('cancelSettings');
+    const saveBtn = document.getElementById('saveSettings');
+
+    openBtn.addEventListener('click', () => {
+        modal.classList.add('active');
+    });
+
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+
+    saveBtn.addEventListener('click', () => {
+        // Copy values to rerun form
+        document.getElementById('r_CHUNK_OVERLAP').value = document.getElementById('s_CHUNK_OVERLAP').value;
+        document.getElementById('r_MAX_WORD_LIMIT').value = document.getElementById('s_MAX_WORD_LIMIT').value;
+        document.getElementById('r_MAX_DOCS_TO_PROCESS').value = document.getElementById('s_MAX_DOCS_TO_PROCESS').value;
+        document.getElementById('r_KEY_WORD_BOOST').value = document.getElementById('s_KEY_WORD_BOOST').value;
+        document.getElementById('r_TOTAL_CHUNKS_TO_FETCH').value = document.getElementById('s_TOTAL_CHUNKS_TO_FETCH').value;
+        document.getElementById('r_DROP_THRESHOLD').value = document.getElementById('s_DROP_THRESHOLD').value;
+        document.getElementById('r_MIN_SCORE_VARIANCE').value = document.getElementById('s_MIN_SCORE_VARIANCE').value;
+        
+        // Submit the form to re-run search
+        document.getElementById('reRunForm').submit();
+    });
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+        }
+    });
+</script>
 
 </body>
 </html>
